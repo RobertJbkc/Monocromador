@@ -23,6 +23,7 @@ from collections import deque
 from time import sleep
 # Alt + 0197 --> Å
 
+#region class ComunicaArduino
 class ComunicaArduino:
     """
     Classe destinada a facilitar a leitura e escrita ao comunicar-se com a placa Arduino.
@@ -84,8 +85,9 @@ class ComunicaArduino:
         Fecha a comunicação entre o Arduino e o computador (Python)
         """
         self.conexao.close()
+#endregion
 
-
+#region class SR510
 class SR510:
     """
     Classe para traduzir o idioma Serial falado pelo Lovk-in SR510 em um idioma de funções Python.
@@ -114,7 +116,7 @@ class SR510:
             stopbits=serial.STOPBITS_TWO, # O SR510 exige 2 em 9600 baud
             timeout=0.05
          )
-        print(f'SR510 conectado na porta {self.porta}.Canal Serial aberto')
+        print(f'SR510 conectado na porta {self.porta}. Canal Serial aberto')
 
     def fechar(self):
         """Fecha a conexão antre computador e Lock-in"""
@@ -179,7 +181,7 @@ class SR510:
         }
         self.conexao.write(b'G\r')
         raw = self.conexao.readline().decode('utf-8').strip()
-        
+        print('Recebido: ', raw)
         try:
             sensitividade_c = int(raw) # Transforma o texto em número
         except ValueError as e:
@@ -189,14 +191,17 @@ class SR510:
         print('##########=========', sensitividade_c, type(sensitividade_c))
         print(dicionario_traducao[sensitividade_c])
 
+        return dicionario_traducao[sensitividade_c]
+
     
     # ========== Escrita ==========
     def set_tempo_espera(self, t):
 
         comando = f'W{t}\r'
         self.conexao.write(comando.encode('ascii')) # Envia o comando
+#endregion
 
-
+#region class Experiento
 class Experimento:
     """
     A classe armazena todos os métodos necessários para realizar um experimento com o monocromador conectado ao Lock-in amplifier SR510.
@@ -234,11 +239,12 @@ class Experimento:
         # ========== Novas características que não são definidas pelo usuário
         self.lista_tensao = []
         self.lista_comprimento_onda = []
+        self.comp_atual = self.comp_i
 
         # Para o gráfico
         self.tamanho_buffer = 100
-        self.buffer_x = deque([0.0]*self.tamanho_buffer, maxlen=self.tamanho_buffer)
-        self.buffer_y = deque([0.0]*self.tamanho_buffer, maxlen=self.tamanho_buffer)
+        self.buffer_x = deque(maxlen=self.tamanho_buffer)
+        self.buffer_y = deque(maxlen=self.tamanho_buffer)
         self.fig, self.ax = None, None
         self.ln = None
 
@@ -314,7 +320,7 @@ class Experimento:
         # Podemos adicionar um "tratamento" de dados ou uma coleta com média e desvio padrão
         tensao = self.sr510.ler_valor_saida()
         # self.lista_tensao.append(tensao) --> _antiga_criar_arquivo_csv()
-        comprimento_onda = 0 # Como vamos conseguir esse valor?????
+        comprimento_onda = self.comp_atual # Como vamos conseguir esse valor?????
 
         
         # self.lista_comprimento_onda.append(comprimento_onda) --> _antiga_criar_arquivo_csv()
@@ -327,6 +333,7 @@ class Experimento:
     def move_motor(self, passo_a):
         """Movimenta o motor do monocromador com base no passo em unidades de comprimento"""
 
+        self.comp_atual += passo_a
         print(f'Passo_a: {passo_a}')
 
     def cria_arquivo_csv(self):
@@ -397,7 +404,7 @@ class Experimento:
             print(f'{i+1}/{total_pontos}')
 
         self.desconectar()
-
+#endregion
 
 if __name__ == "__main__":
 
