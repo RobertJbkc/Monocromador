@@ -20,6 +20,7 @@
 import serial
 import matplotlib.pyplot as plt
 from collections import deque
+from time import sleep
 # Alt + 0197 --> Å
 
 class ComunicaArduino:
@@ -29,25 +30,29 @@ class ComunicaArduino:
     São métodos de leitura e escrita, além de conexão e desconexão da comunicação Serial.
     """
 
-    def __init__(self, porta: str, bound_rate: int):
+    def __init__(self, porta: str, boundrate: int, timeout: None=None):
         """
         Função constutora para a classe de comunicação Python-Arduino
 
         Args:
             porta (str): A porta 'COM' em que a placa Arduino está conectada
-            bound_rate (int): A taxa de comunicação Serial
+            boundrate (int): A taxa de comunicação Serial
+            timeout (None): O tempo máximo que o python espera por uma resposta. None --> Infinito. Defaults to None.
         """
         self.porta = porta
-        self.bound_rate = bound_rate
+        self.boundrate = boundrate
+        self.timeout = timeout
 
     
     def conectar(self):
         """Cria e abre a conexão entre o Arduino e o computador (Python)"""
         self.conexao = serial.Serial(
             port=self.porta,
-            baudrate=self.bound_rate,
-            timeout=None # É o valor padrão
+            baudrate=self.boundrate,
+            timeout=self.timeout
          )
+        sleep(2.5) # Tempo para garanti que a conxão foi aberta
+        
         
     def ler_Serial(self):
         """
@@ -70,6 +75,7 @@ class ComunicaArduino:
             mensagem (None): A mensagem que será enviada para o Arduino
         """
 
+        mensagem = str(mensagem)
         mensagem_b = mensagem.encode('ascii')
         self.conexao.write(mensagem_b)
 
@@ -89,10 +95,10 @@ class SR510:
     A base de funcionamento é o módulo pySerial.
     """
 
-    def __init__(self, porta, bound_rate):
+    def __init__(self, porta, boundrate):
          
          self.porta = porta
-         self.bound_rate = bound_rate
+         self.boundrate = boundrate
          self.conexao = None
 
 
@@ -102,7 +108,7 @@ class SR510:
          
         self.conexao = serial.Serial(
             port=self.porta,
-            baudrate=self.bound_rate, # Configurado nas chaves 1, 2 e 3
+            baudrate=self.boundrate, # Configurado nas chaves 1, 2 e 3
             bytesize=serial.EIGHTBITS,
             parity=serial.PARITY_NONE, # Configurado nas chaves 4 e 5
             stopbits=serial.STOPBITS_TWO, # O SR510 exige 2 em 9600 baud
@@ -374,7 +380,7 @@ class Experimento:
         Uma função para rodar um experimento inteiro, i.e., coletar dados, mover motores e salvar o arquivo .csv
 
         Args:
-            conexao (dict): Um dicionário com as chaves porta (porta) e o bound rate (bound_rate) da comunicação Serial
+            conexao (dict): Um dicionário com as chaves porta (porta) e o bound rate (boundrate) da comunicação Serial
         """
 
         total_pontos, passo_a = self.calcula_passo()
@@ -397,4 +403,4 @@ if __name__ == "__main__":
 
     texto = """Conjunto de testes para ferificar o correto funcionamento do programa de leitura e automação do monocromador com Python 3"""
     experimento = Experimento('Teste_do_programa', 'João Roberto B. K. Cruz', 100, 110, 0.1, 5, texto)
-    experimento.run({'porta': 'COM7', 'bound_rate': 9600})
+    experimento.run({'porta': 'COM7', 'boundrate': 9600})
