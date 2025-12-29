@@ -262,7 +262,20 @@ class Experimento:
         ]
         #endregion
 
+    # ========== Conexão ==========
+    def conectar(self, conexao: dict):
+        """Cria a conexao (abre o canal), por meio de "SR510", com o Lock-in"""
 
+        self.sr510 = SR510(**conexao) # Cria o objeto da classe "SR510"
+        self.sr510.conectar() # Usa o método "conectar()" da classe "SR510" para criar a conexão computador-Lock-in
+
+    def desconectar(self):
+            """Desconecta o computador do Lock-in"""
+
+            self.sr510.fechar()
+
+
+    # ========== Gráfico ==========
     def inicializar_grafico(self):
         """Prepara a janela do gráfico antes de começar o loop"""
 
@@ -295,21 +308,61 @@ class Experimento:
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
 
-    def conectar(self, conexao: dict):
-        """Cria a conexao (abre o canal), por meio de "SR510", com o Lock-in"""
-
-        self.sr510 = SR510(**conexao) # Cria o objeto da classe "SR510"
-        self.sr510.conectar() # Usa o método "conectar()" da classe "SR510" para criar a conexão computador-Lock-in
 
     def calcula_passo(self):
-        """Calcula o total de pontos de medida e o passo em angstrons que deverá ser dado pelo motor"""
+        """Calcula o total de pontos de medida e o passo step (unidade de passo de motor) que o motor deverá dar a cada loop"""
 
+        def acerta_passo(total_pontos_original: int, passo_a: float):
+            """
+            Garante que o step não é um número fracionário e que todo o range de medida escolhido será contemplado com resolução melhor ou igual à original
+
+            Args:
+                total_pontos_original (int): O número de pntos de medida
+                passo_a (float): O passo em Å que seria dado
+
+            Returns:
+                tuple: Uma tupla --> (total de pontos de medida, passo do motor "step" emunidades de passo de motor)
+            """
+
+            from math import modf, ceil
+            # Menor step --> 1 :: Menor passo --> 0.08333... Å
+            def conversor_angstron_step_step_angstron(valor, ang_step: str):
+                """
+                Uma função que realiza a conversão bidirecional entre passos em Å e passos step
+
+                Args:
+                    valor (Any): O valor a ser convertido
+                    ang_step (str): A unidade em que se está
+
+                Returns:
+                    float: O valor convertido
+                """
+                
+                if ang_step == 'ang':
+                    # ===== Å --para-> step
+                    return 12 * valor
+                else:
+                    # ===== Step --para-> Å
+                    return (1/12) * valor
+            
+            step_basico = conversor_angstron_step_step_angstron(passo_a, self.calcula_passo()[1], 'ang')
+            fracionaria, step = modf(step_basico) # Tupla --> (parte fracionária, parte inteira(float))
+            falta = fracionaria * total_pontos_original # Em unidades de passo de motor
+            ciclos_extras = ceil(falta / step) # Número de ciclos extras que serão necessários para varrer o espectro
+            total_pontos = total_pontos_original + ciclos_extras
+
+            return total_pontos, step
+        
         diferenca = abs(self.comp_f - self.comp_i)
         resolucao = self.tamanho_fenda * Experimento.grade
-        total_pontos = self.ppr * diferenca / resolucao
-        passo_a = diferenca / total_pontos # Unidades de comprimento
+        total_pontos = self.ppr * diferenca / resolucao # Total de ciclos
+        passo_a = diferenca / total_pontos # Unidades de comprimento Å
+        novo_total_pontos, step = acerta_passo(total_pontos, passo_a)
 
-        return int(total_pontos), passo_a
+        return int(novo_total_pontos), int(step)
+
+
+
 
     def coletar_dados(self):
         """Coleta os dados do experimento e armazena na forma de listas do próprio objeto"""
@@ -374,10 +427,6 @@ class Experimento:
             writer = writer(log)
             writer.writerow(dados)
 
-    def desconectar(self):
-        """Desconecta o computador do Lock-in"""
-
-        self.sr510.fechar()
 
     def run(self, conexao: dict):
         """
