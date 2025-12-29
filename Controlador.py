@@ -51,6 +51,7 @@ class ComunicaArduino:
             baudrate=self.boundrate,
             timeout=self.timeout
          )
+        sleep(0.5)
         print(f'Conectando na porta {self.porta}...')
         sleep(2.5) # Tempo para garanti que a conxão foi aberta
         print(f'Arduino conectado na porta {self.porta}. Canal Serial aberto')
@@ -86,7 +87,7 @@ class ComunicaArduino:
             mensagem (None): A mensagem que será enviada para o Arduino
         """
 
-        print('##########Enviando...##########', mensagem)
+        print(f'PC: Enviando [{mensagem}]...')
         mensagem = str(mensagem)
         mensagem_b = mensagem.encode('ascii')
         self.conexao.write(mensagem_b)
@@ -96,7 +97,7 @@ class ComunicaArduino:
     def mover_motor(self, passos):
         self.escrever(passos)
         saida = self.ler_Serial()
-        print(saida)
+        print(f'Arduino: [{saida}]')
 
 
     
@@ -131,6 +132,7 @@ class SR510:
             stopbits=serial.STOPBITS_TWO, # O SR510 exige 2 em 9600 baud
             timeout=0.05
          )
+        sleep(0.5)
         print(f'Conectando na porta {self.porta}...')
         sleep(2.5) # Tempo para garanti que a conxão foi aberta
         print(f'SR510 conectado na porta {self.porta}. Canal Serial aberto')
@@ -198,15 +200,11 @@ class SR510:
         }
         self.conexao.write(b'G\r')
         raw = self.conexao.readline().decode('utf-8').strip()
-        print('Recebido: ', raw)
         try:
             sensitividade_c = int(raw) # Transforma o texto em número
         except ValueError as e:
             print(f'Erro ao converter a resposta "raw" --> float: {e}')
             sensitividade_c = None
-
-        print('##########=========', sensitividade_c, type(sensitividade_c))
-        print(dicionario_traducao[sensitividade_c])
 
         return dicionario_traducao[sensitividade_c]
 
@@ -306,10 +304,10 @@ class Experimento:
         self.ax.set_title(f'Espectro em Tempo Real')
         self.ax.set_xlabel('Comprimento de Onda (Å)')
         escala = self.sr510.ler_sensitividade()
-        print('########## Escala:', escala)
+        print(f'Gráfico: Sensibilidade [{escala}]')
         self.ax.set_ylabel(f'Sinal ({escala})')
         self.ax.grid(True)
-        self.ax.legend(loc='upper right')
+        self.ax.legend(loc='upper left')
 
         # Ajusta os limites do eixo X baseado no definido pelo usuário
         self.ax.set_xlim(min(self.comp_i, self.comp_f), max(self.comp_i, self.comp_f))
@@ -469,14 +467,21 @@ class Experimento:
         self.inicializar_grafico()
 
         print('Iniciando o experimento...\n')
-        sleep(1.5)
+        sleep(2.5)
         for i in range(total_pontos):
             # Medir --> mover --> Medir...
             self.coletar_dados()
             self.atualizar_grafico()
+            plt.pause(0.01) # Permitir a interatividade durante a execução
 
             self.move_motor(step, passo_a)
-            print(f'{i+1}/{total_pontos}\n')
+            print(f'{i+1}/{total_pontos}\n{['-']*25}')
+        
+
+        # Deixa o gráfico na tela ao final do experimento
+        plt.ioff()
+        plt.tight_layout()
+        plt.show()
 
         self.desconectar()
 #endregion
