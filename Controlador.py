@@ -1,4 +1,4 @@
-#region ========== Objetivo ==========
+#region Objetivo
 # - Um programa que, ao receber o comprimento de onda inicial e final, além do tamanho da fenda e pontos por resolução, move o monocromador para os pontos e realiza 3 ou 5 medidas em cada ponto, calcula média e desvio padrão e armazena os dados (tensão e comprimento de onda) em um arquivo .csv.
 # - Criar uma classe para o experimento --> OOP
 #   - Integrar a função de movimentar o monocromador
@@ -19,7 +19,6 @@
 # Deveria estar dentro da classe?
 import serial
 import matplotlib.pyplot as plt
-from collections import deque
 from time import sleep
 # Alt + 0197 --> Å
 
@@ -243,8 +242,8 @@ class Experimento:
 
         # Para o gráfico
         self.tamanho_buffer = 100
-        self.buffer_x = deque(maxlen=self.tamanho_buffer)
-        self.buffer_y = deque(maxlen=self.tamanho_buffer)
+        self.buffer_x = []
+        self.buffer_y = []
         self.fig, self.ax = None, None
         self.ln = None
 
@@ -277,6 +276,7 @@ class Experimento:
         print('########## Escala:', escala)
         self.ax.set_ylabel(f'Sinal ({escala})')
         self.ax.grid(True)
+        self.ax.legend(loc='upper right')
 
         # Ajusta os limites do eixo X baseado no definido pelo usuário
         self.ax.set_xlim(min(self.comp_i, self.comp_f), max(self.comp_i, self.comp_f))
@@ -287,9 +287,6 @@ class Experimento:
         if self.ln:
             # O set_data aceita o deque diretamente
             self.ln.set_data(self.buffer_x, self.buffer_y)
-            
-            # Ajuste dinâmico dos eixos para seguir o buffer
-            self.ax.set_xlim(min(self.buffer_x), max(self.buffer_x))
             
             # Ajuste de margem no eixo Y para o sinal não bater no teto
             margem = (max(self.buffer_y) - min(self.buffer_y)) * 0.1
