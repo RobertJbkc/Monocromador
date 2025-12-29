@@ -241,7 +241,7 @@ class Experimento:
         self.comp_atual = self.comp_i
 
         # Para o gráfico
-        self.tamanho_buffer = 100
+        # self.tamanho_buffer = 100
         self.buffer_x = []
         self.buffer_y = []
         self.fig, self.ax = None, None
@@ -281,7 +281,7 @@ class Experimento:
 
         plt.ion() # Ativa o modo interativo
         self.fig, self.ax = plt.subplots(figsize=(8, 5))
-        self.ln, = self.ax.plot([], [], 'ro-', animated=False) # 'ro-' --> bola vermelha com linha
+        self.ln, = self.ax.plot([], [], 'ro-', animated=False, label='Sinal') # 'ro-' --> bola vermelha com linha
         
         self.ax.set_title(f'Espectro em Tempo Real')
         self.ax.set_xlabel('Comprimento de Onda (Å)')
@@ -310,7 +310,33 @@ class Experimento:
 
 
     def calcula_passo(self):
-        """Calcula o total de pontos de medida e o passo step (unidade de passo de motor) que o motor deverá dar a cada loop"""
+        """
+        Calcula o total de pontos de medida e o passo step (unidade de passo de motor) que o motor deverá dar a cada loop
+
+        Returns:
+            tuple: (O número de pontos de medida, 
+            O passo do motor "step", O passo em Angstron)
+        """
+
+        from math import modf, ceil
+        def conversor_angstron_step_step_angstron(valor, ang_step: str):
+            """
+            Uma função que realiza a conversão bidirecional entre passos em Å e passos step
+
+            Args:
+                valor (Any): O valor a ser convertido
+                ang_step (str): A unidade em que se está
+
+            Returns:
+                float: O valor convertido
+            """
+
+            if ang_step == 'ang':
+                # ===== Å --para-> step
+                return 12 * valor
+            else:
+                # ===== Step --para-> Å
+                return (1/12) * valor
 
         def acerta_passo(total_pontos_original: int, passo_a: float):
             """
@@ -324,28 +350,8 @@ class Experimento:
                 tuple: Uma tupla --> (total de pontos de medida, passo do motor "step" emunidades de passo de motor)
             """
 
-            from math import modf, ceil
-            # Menor step --> 1 :: Menor passo --> 0.08333... Å
-            def conversor_angstron_step_step_angstron(valor, ang_step: str):
-                """
-                Uma função que realiza a conversão bidirecional entre passos em Å e passos step
-
-                Args:
-                    valor (Any): O valor a ser convertido
-                    ang_step (str): A unidade em que se está
-
-                Returns:
-                    float: O valor convertido
-                """
-                
-                if ang_step == 'ang':
-                    # ===== Å --para-> step
-                    return 12 * valor
-                else:
-                    # ===== Step --para-> Å
-                    return (1/12) * valor
             
-            step_basico = conversor_angstron_step_step_angstron(passo_a, self.calcula_passo()[1], 'ang')
+            step_basico = conversor_angstron_step_step_angstron(passo_a, 'ang')
             fracionaria, step = modf(step_basico) # Tupla --> (parte fracionária, parte inteira(float))
             falta = fracionaria * total_pontos_original # Em unidades de passo de motor
             ciclos_extras = ceil(falta / step) # Número de ciclos extras que serão necessários para varrer o espectro
@@ -358,8 +364,9 @@ class Experimento:
         total_pontos = self.ppr * diferenca / resolucao # Total de ciclos
         passo_a = diferenca / total_pontos # Unidades de comprimento Å
         novo_total_pontos, step = acerta_passo(total_pontos, passo_a)
+        novo_passo_a = conversor_angstron_step_step_angstron(step, 'step')
 
-        return int(novo_total_pontos), int(step)
+        return int(novo_total_pontos), int(step), novo_passo_a
 
 
 
@@ -436,7 +443,7 @@ class Experimento:
             conexao (dict): Um dicionário com as chaves porta (porta) e o bound rate (boundrate) da comunicação Serial
         """
 
-        total_pontos, passo_a = self.calcula_passo()
+        total_pontos, step, passo_a = self.calcula_passo()
         self.conectar(conexao)
         print('Criando o arquivo .csv')
         self.cria_arquivo_csv()
@@ -456,4 +463,4 @@ if __name__ == "__main__":
 
     texto = """Conjunto de testes para ferificar o correto funcionamento do programa de leitura e automação do monocromador com Python 3"""
     experimento = Experimento('Teste_do_programa', 'João Roberto B. K. Cruz', 100, 110, 0.1, 5, texto)
-    experimento.run({'porta': 'COM7', 'boundrate': 9600})
+    experimento.run({'porta': 'COM12', 'boundrate': 9600})
