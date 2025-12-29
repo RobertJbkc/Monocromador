@@ -43,7 +43,7 @@ class ComunicaArduino:
         self.boundrate = boundrate
         self.timeout = timeout
 
-    
+    # ========== Conexão ==========
     def conectar(self):
         """Cria e abre a conexão entre o Arduino e o computador (Python)"""
         self.conexao = serial.Serial(
@@ -51,9 +51,18 @@ class ComunicaArduino:
             baudrate=self.boundrate,
             timeout=self.timeout
          )
+        print(f'Conectando na porta {self.porta}...')
         sleep(2.5) # Tempo para garanti que a conxão foi aberta
-        
-        
+        print(f'Arduino conectado na porta {self.porta}. Canal Serial aberto')
+
+    def desconectar(self):
+        """
+        Fecha a comunicação entre o Arduino e o computador (Python)
+        """
+        self.conexao.close()  
+    
+
+    # ========== Leitura ==========
     def ler_Serial(self):
         """
         Faz a leitura da saída Serial do Arduino. Lê uma linha e decodifica em "utf-8"
@@ -67,6 +76,8 @@ class ComunicaArduino:
 
         return saida
     
+
+    # ========== Escrita ==========
     def escrever(self, mensagem):
         """
         Encia uma mensagem via comunicação Serial para o Arduino. Escreve na porta Serial
@@ -75,15 +86,20 @@ class ComunicaArduino:
             mensagem (None): A mensagem que será enviada para o Arduino
         """
 
+        print('##########Enviando...##########', mensagem)
         mensagem = str(mensagem)
         mensagem_b = mensagem.encode('ascii')
         self.conexao.write(mensagem_b)
 
-    def desconectar(self):
-        """
-        Fecha a comunicação entre o Arduino e o computador (Python)
-        """
-        self.conexao.close()
+
+    # ========== Métodos (explícitos) ==========
+    def mover_motor(self, passos):
+        self.escrever(passos)
+        saida = self.ler_Serial()
+        print(saida)
+
+
+    
 #endregion
 
 #region class SR510
@@ -115,6 +131,8 @@ class SR510:
             stopbits=serial.STOPBITS_TWO, # O SR510 exige 2 em 9600 baud
             timeout=0.05
          )
+        print(f'Conectando na porta {self.porta}...')
+        sleep(2.5) # Tempo para garanti que a conxão foi aberta
         print(f'SR510 conectado na porta {self.porta}. Canal Serial aberto')
 
     def fechar(self):
@@ -263,11 +281,13 @@ class Experimento:
         #endregion
 
     # ========== Conexão ==========
-    def conectar(self, conexao: dict):
-        """Cria a conexao (abre o canal), por meio de "SR510", com o Lock-in"""
+    def conectar(self, conexao_lock_in: dict, conexao_arduino: dict):
+        """Cria a conexao (abre o canal), por meio de "SR510", com o Lock-in e por meio de "ComunicaArduino" com o Arduino"""
 
-        self.sr510 = SR510(**conexao) # Cria o objeto da classe "SR510"
+        self.sr510 = SR510(**conexao_lock_in) # Cria o objeto da classe "SR510"
+        self.arduino = ComunicaArduino(**conexao_arduino)
         self.sr510.conectar() # Usa o método "conectar()" da classe "SR510" para criar a conexão computador-Lock-in
+        self.arduino.conectar()
 
     def desconectar(self):
             """Desconecta o computador do Lock-in"""
@@ -303,7 +323,8 @@ class Experimento:
             
             # Ajuste de margem no eixo Y para o sinal não bater no teto
             margem = (max(self.buffer_y) - min(self.buffer_y)) * 0.1
-            self.ax.set_ylim(min(self.buffer_y) - margem, max(self.buffer_y) + margem)
+            # self.ax.set_ylim(min(self.buffer_y) - margem, max(self.buffer_y) + margem)
+            self.ax.set_ylim(None, None)
             
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
@@ -368,9 +389,6 @@ class Experimento:
 
         return int(novo_total_pontos), int(step), novo_passo_a
 
-
-
-
     def coletar_dados(self):
         """Coleta os dados do experimento e armazena na forma de listas do próprio objeto"""
         
@@ -387,11 +405,12 @@ class Experimento:
         self.buffer_x.append(comprimento_onda)
         self.buffer_y.append(tensao)
         
-    def move_motor(self, passo_a):
+    def move_motor(self, step, passo_a):
         """Movimenta o motor do monocromador com base no passo em unidades de comprimento"""
 
-        self.comp_atual += passo_a
-        print(f'Passo_a: {passo_a}')
+        print(f'Movendo o motor... {step} passos de motor; {passo_a}Angstron')
+        self.comp_atual += passo_a # Atualiza onde o programa está no espectro
+        self.arduino.mover_motor(step)
 
     def cria_arquivo_csv(self):
         """Cria o arquivo .csv com os dados coletados no exeperiemento"""
@@ -435,7 +454,7 @@ class Experimento:
             writer.writerow(dados)
 
 
-    def run(self, conexao: dict):
+    def run(self, conexao_lock_in: dict, conexao_arduino: dict):
         """
         Uma função para rodar um experimento inteiro, i.e., coletar dados, mover motores e salvar o arquivo .csv
 
@@ -444,17 +463,20 @@ class Experimento:
         """
 
         total_pontos, step, passo_a = self.calcula_passo()
-        self.conectar(conexao)
-        print('Criando o arquivo .csv')
+        self.conectar(conexao_lock_in=conexao_lock_in, conexao_arduino=conexao_arduino)
+        print('Criando o arquivo .csv...')
         self.cria_arquivo_csv()
         self.inicializar_grafico()
 
+        print('Iniciando o experimento...\n')
+        sleep(1.5)
         for i in range(total_pontos):
             # Medir --> mover --> Medir...
             self.coletar_dados()
             self.atualizar_grafico()
-            self.move_motor(passo_a)
-            print(f'{i+1}/{total_pontos}')
+
+            self.move_motor(step, passo_a)
+            print(f'{i+1}/{total_pontos}\n')
 
         self.desconectar()
 #endregion
@@ -463,4 +485,4 @@ if __name__ == "__main__":
 
     texto = """Conjunto de testes para ferificar o correto funcionamento do programa de leitura e automação do monocromador com Python 3"""
     experimento = Experimento('Teste_do_programa', 'João Roberto B. K. Cruz', 100, 110, 0.1, 5, texto)
-    experimento.run({'porta': 'COM12', 'boundrate': 9600})
+    experimento.run({'porta': 'COM12', 'boundrate': 9600}, {'porta': 'COM13', 'boundrate': 9600})
