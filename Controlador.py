@@ -293,9 +293,33 @@ class Experimento:
             self.sr510.fechar()
 
 
+    # ========== Responsividade ==========
+    def fechamento(self):
+        """Função executada caso a janela de plotagem seja fechada. Encerra o programa."""
+
+        print('\n[AVISO] Janela fechada. Abortando experimento com segurança...')
+        self.abortar_experimento = True
+
+    def tecla_pressionada(self, evento):
+        """
+        Função chamada quando o programa detecta a pressão em alguma tecla NA JANELA DE PLOTAGEM.
+
+        Args:
+            evento (_type_): O sinal do Matplotlib para a ativação da função. Carrega informações sobre o evento (qual a tecla...)
+        """
+
+        if evento.key == 'escape' or evento.key == 'q':
+            print('\n[AVISO] Tecla de parada pressionada. Encerrando...')
+            self.abortar_experimento = True
+
     # ========== Gráfico ==========
     def inicializar_grafico(self):
-        """Prepara a janela do gráfico antes de começar o loop"""
+        """Prepara a janela do gráfico antes de começar o loop, além de ativar a interatividade"""
+
+        # ========== Conectar eventos a funções via Matplotlib ==========
+        self.fig.canvas.mpl_connect('close_event', self.fechamento) # Detecta se a janela foi fechada
+        self.fig.canvas.mpl_connect('key_press_event', self.tecla_pressionada) # Detecta teclas pressionada
+
 
         plt.ion() # Ativa o modo interativo
         self.fig, self.ax = plt.subplots(figsize=(8, 5))
@@ -469,22 +493,33 @@ class Experimento:
         print('Iniciando o experimento...\n')
         sleep(2.5)
         for i in range(total_pontos):
+
+            # Verifica se ocorreu o pedido de parada
+            if self.abortar_experimento:
+                break
+
             # Medir --> mover --> Medir...
             self.coletar_dados()
             self.atualizar_grafico()
             plt.pause(0.01) # Permitir a interatividade durante a execução
 
             self.move_motor(step, passo_a)
-            print(f'{i+1}/{total_pontos}\n{['-']*25}')
+            print(f'{i+1}/{total_pontos}\n{'-'*25}')
         
 
-        # Deixa o gráfico na tela ao final do experimento
-        plt.ioff()
-        plt.tight_layout()
-        plt.show()
-
+        print("Finalizando conexões...")
         self.desconectar()
+
+        if self.abortar_experimento:
+            print("Experimento interrompido pelo usuário.")
+        else:
+            print("Experimento concluído.")
+            # Deixa o gráfico na tela ao final do experimento
+            plt.ioff()
+            plt.tight_layout()
+            plt.show()
 #endregion
+
 
 if __name__ == "__main__":
 
