@@ -255,6 +255,8 @@ class Experimento:
         self.lista_tensao = []
         self.lista_comprimento_onda = []
         self.comp_atual = self.comp_i
+        self.abortar_experimento = False
+        self.experimento_concluido = False
 
         # Para o gráfico
         # self.tamanho_buffer = 100
@@ -294,9 +296,13 @@ class Experimento:
 
 
     # ========== Responsividade ==========
-    def fechamento(self):
+    def fechamento(self, evento):
         """Função executada caso a janela de plotagem seja fechada. Encerra o programa."""
 
+        # Não uso o "evnto", mas preciso desse argumeto para o Matplot não reclamar
+        if self.experimento_concluido:
+            return
+        
         print('\n[AVISO] Janela fechada. Abortando experimento com segurança...')
         self.abortar_experimento = True
 
@@ -316,13 +322,13 @@ class Experimento:
     def inicializar_grafico(self):
         """Prepara a janela do gráfico antes de começar o loop, além de ativar a interatividade"""
 
+        plt.ion() # Ativa o modo interativo
+        self.fig, self.ax = plt.subplots(figsize=(8, 5))
+
         # ========== Conectar eventos a funções via Matplotlib ==========
         self.fig.canvas.mpl_connect('close_event', self.fechamento) # Detecta se a janela foi fechada
         self.fig.canvas.mpl_connect('key_press_event', self.tecla_pressionada) # Detecta teclas pressionada
 
-
-        plt.ion() # Ativa o modo interativo
-        self.fig, self.ax = plt.subplots(figsize=(8, 5))
         self.ln, = self.ax.plot([], [], 'ro-', animated=False, label='Sinal') # 'ro-' --> bola vermelha com linha
         
         self.ax.set_title(f'Espectro em Tempo Real')
@@ -345,8 +351,7 @@ class Experimento:
             
             # Ajuste de margem no eixo Y para o sinal não bater no teto
             margem = (max(self.buffer_y) - min(self.buffer_y)) * 0.1
-            # self.ax.set_ylim(min(self.buffer_y) - margem, max(self.buffer_y) + margem)
-            self.ax.set_ylim(None, None)
+            self.ax.set_ylim(min(self.buffer_y) - margem, max(self.buffer_y) + margem)
             
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
@@ -504,7 +509,7 @@ class Experimento:
             plt.pause(0.01) # Permitir a interatividade durante a execução
 
             self.move_motor(step, passo_a)
-            print(f'{i+1}/{total_pontos}\n{'-'*25}')
+            print(f'{i+1}/{total_pontos}\n', '-'*25)
         
 
         print("Finalizando conexões...")
@@ -514,6 +519,7 @@ class Experimento:
             print("Experimento interrompido pelo usuário.")
         else:
             print("Experimento concluído.")
+            self.experimento_concluido = True
             # Deixa o gráfico na tela ao final do experimento
             plt.ioff()
             plt.tight_layout()
@@ -524,5 +530,5 @@ class Experimento:
 if __name__ == "__main__":
 
     texto = """Conjunto de testes para ferificar o correto funcionamento do programa de leitura e automação do monocromador com Python 3"""
-    experimento = Experimento('Teste_do_programa', 'João Roberto B. K. Cruz', 100, 110, 0.1, 5, texto)
-    experimento.run({'porta': 'COM12', 'boundrate': 9600}, {'porta': 'COM13', 'boundrate': 9600})
+    experimento = Experimento('Teste_do_programa', 'João Roberto B. K. Cruz', 100, 105, 0.1, 1, texto)
+    experimento.run({'porta': 'COM10', 'boundrate': 9600}, {'porta': 'COM13', 'boundrate': 9600})
