@@ -19,7 +19,7 @@
 # Deveria estar dentro da classe?
 import serial
 import matplotlib.pyplot as plt
-from time import sleep
+from time import sleep, perf_counter
 # Alt + 0197 --> Å
 
 #region class ComunicaArduino
@@ -293,6 +293,7 @@ class Experimento:
             """Desconecta o computador do Lock-in"""
 
             self.sr510.fechar()
+            self.arduino.desconectar()
 
 
     # ========== Responsividade ==========
@@ -498,6 +499,7 @@ class Experimento:
         print('Iniciando o experimento...\n')
         sleep(2.5)
         for i in range(total_pontos):
+            tempo_i = perf_counter()
 
             # Verifica se ocorreu o pedido de parada
             if self.abortar_experimento:
@@ -509,10 +511,17 @@ class Experimento:
             plt.pause(0.01) # Permitir a interatividade durante a execução
 
             self.move_motor(step, passo_a)
-            print(f'{i+1}/{total_pontos}\n', '-'*25)
+            tempo_f = perf_counter()
+
+            # ===== Calcula o tempo que será gasto
+            delta_t = tempo_f - tempo_i
+            tempo_total = delta_t * (total_pontos - 1) # Já foi uma iteração
+            minutos, segundos = tempo_total // 60, tempo_total % 60
+            print(f'Frequência de medida 1 medida por {delta_t}')
+            print(f"Tempo restante: {minutos}' {segundos}' --- {i+1}/{total_pontos}\n", '-'*25)
         
 
-        print("Finalizando conexões...")
+        print('Finalizando conexões...')
         self.desconectar()
 
         if self.abortar_experimento:
