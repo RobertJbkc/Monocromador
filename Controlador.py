@@ -1,3 +1,4 @@
+
 #region Objetivo
 # - Um programa que, ao receber o comprimento de onda inicial e final, além do tamanho da fenda e pontos por resolução, move o monocromador para os pontos e realiza 3 ou 5 medidas em cada ponto, calcula média e desvio padrão e armazena os dados (tensão e comprimento de onda) em um arquivo .csv.
 # - Criar uma classe para o experimento --> OOP
@@ -485,63 +486,7 @@ class Experimento:
             writer = writer(log)
             writer.writerow(dados)
 
-    def encontrar_pico(self):
-        """Testa se o ultimo valro do buffer de dadso faz parte de um pico. É uma forma bem simplificada de fazer isso. Compara com os 5 valores anteriores
 
-        Somente opera com linhas de espectro, não grandes picos. LINHAS.
-        """
-
-        from collections import deque
-
-        self.encontrou_pico = False
-        parametro_de_pico = 10
-        # A função deverá percorrer os dados e identificar uma rápida subido (linha do espectro)
-        buffer_pico = self.buffer_y[-5:] # Pega os últimos 5 valores
-        pre_media = sum(buffer_pico[-4:]) / 4
-        if buffer_pico[-1] > (parametro_de_pico * pre_media):
-            self.encontrou_pico = True
-
-
-# ========== Utilitário/Usuário ==========
-
-    def calibracao(self, conexao_lock_in: dict, conexao_arduino: dict, primeiro_pico: float, segundo_pico: float, modo: str=None):
-
-        if modo == None:
-            self.conectar(conexao_lock_in=conexao_lock_in, conexao_arduino=conexao_arduino)
-            print('Criando o arquivo .csv...')
-            self.cria_arquivo_csv()
-            self.inicializar_grafico()
-
-            print('Iniciando a calibração...\n')
-            sleep(2.5)
-            contador_steps = 0
-            encontrou_pico = False
-            while not encontrou_pico:
-                tempo_i = perf_counter()
-
-                # Verifica se ocorreu o pedido de parada
-                if self.abortar_experimento:
-                    break
-
-                self.coletar_dados()
-                self.atualizar_grafico()
-                plt.pause(0.01) # Permitir a interatividade durante a execução
-
-                self.move_motor(1, 0)
-                contador_steps += 1
-                self.encontrar_pico() # Testa se há um pico
-                tempo_f = perf_counter()
-
-                # ===== Calcula o tempo que será gasto
-                delta_t = tempo_f - tempo_i
-                tempo_total = delta_t * (total_pontos - 1) # Já foi uma iteração
-                minutos, segundos = tempo_total // 60, tempo_total % 60
-                print(f'Frequência de medida 1 medida por {delta_t}')
-                print(f"Tempo restante: {minutos}' {segundos}' --- {i+1}/{total_pontos}\n", '-'*25)
-
-            print(f'\nO número de steps entre 1:{primeiro_pico} e 2:{segundo_pico} foi {contador_steps}')
-            print(f'{(segundo_pico - primeiro_pico) / contador_steps} psteps por Å')
-    
     def run(self, conexao_lock_in: dict, conexao_arduino: dict):
         """
         Uma função para rodar um experimento inteiro, i.e., coletar dados, mover motores e salvar o arquivo .csv
@@ -596,14 +541,8 @@ class Experimento:
 #endregion
 
 
-# if __name__ == "__main__":
-
-#     texto = """Conjunto de testes para ferificar o correto funcionamento do programa de leitura e automação do monocromador com Python 3"""
-#     experimento = Experimento('Teste_do_programa', 'João Roberto B. K. Cruz', 100, 105, 0.1, 1, texto)
-#     experimento.run({'porta': 'COM10', 'boundrate': 9600}, {'porta': 'COM13', 'boundrate': 9600})
-
 if __name__ == "__main__":
 
     texto = """Conjunto de testes para ferificar o correto funcionamento do programa de leitura e automação do monocromador com Python 3"""
     experimento = Experimento('Teste_do_programa', 'João Roberto B. K. Cruz', 100, 105, 0.1, 1, texto)
-    experimento.calibracao({'porta': 'COM10', 'boundrate': 9600}, {'porta': 'COM13', 'boundrate': 9600}, 5000, 5100)
+    experimento.run({'porta': 'COM10', 'boundrate': 9600}, {'porta': 'COM13', 'boundrate': 9600})
