@@ -335,7 +335,7 @@ class Experimento:
         self.fig.canvas.mpl_connect('close_event', self.fechamento) # Detecta se a janela foi fechada
         self.fig.canvas.mpl_connect('key_press_event', self.tecla_pressionada) # Detecta teclas pressionada
 
-        self.ln, = self.ax.plot([], [], 'ro-', animated=False, label='Sinal') # 'ro-' --> bola vermelha com linha
+        self.ln, = self.ax.plot([], [], 'ro-', ms=2.5, animated=False, label='Sinal') # 'ro-' --> bola vermelha com linha
         
         self.ax.set_title(f'Espectro em Tempo Real')
         self.ax.set_xlabel('Comprimento de Onda (Å)')
@@ -385,12 +385,13 @@ class Experimento:
                 float: O valor convertido
             """
 
+            fator_calibracao = 10.6170 # Passos por Å
             if ang_step == 'ang':
                 # ===== Å --para-> step
-                return 12 * valor
+                return fator_calibracao * valor
             else:
                 # ===== Step --para-> Å
-                return (1/12) * valor
+                return (1/fator_calibracao) * valor
 
         def acerta_passo(total_pontos_original: int, passo_a: float):
             """
