@@ -221,7 +221,7 @@ class SR510:
         self.conexao.write(comando.encode('ascii')) # Envia o comando
 #endregion
 
-#region class Experiento
+#region class Experimento
 class Experimento:
     """
     A classe armazena todos os métodos necessários para realizar um experimento com o monocromador conectado ao Lock-in amplifier SR510.
@@ -385,7 +385,7 @@ class Experimento:
                 float: O valor convertido
             """
 
-            fator_calibracao = 10.6170 # Passos por Å
+            fator_calibracao = 10.6170 # Steps por Å
             if ang_step == 'ang':
                 # ===== Å --para-> step
                 return fator_calibracao * valor
@@ -538,6 +538,7 @@ class Experimento:
             # Deixa o gráfico na tela ao final do experimento
             plt.ioff()
             plt.tight_layout()
+            plt.savefig(self.nome_exclusivo.stem + 'jpg')
             plt.show()
 #endregion
 
