@@ -1,4 +1,3 @@
-
 #region Objetivo
 # - Um programa que, ao receber o comprimento de onda inicial e final, além do tamanho da fenda e pontos por resolução, move o monocromador para os pontos e realiza 3 ou 5 medidas em cada ponto, calcula média e desvio padrão e armazena os dados (tensão e comprimento de onda) em um arquivo .csv.
 # - Criar uma classe para o experimento --> OOP
@@ -25,6 +24,7 @@
 import serial
 import matplotlib.pyplot as plt
 from time import sleep, perf_counter
+from datetime import date, datetime
 # Alt + 0197 --> Å
 
 #region class ComunicaArduino
@@ -169,55 +169,66 @@ class SR510:
         
         return raw
     
-    def ler_sensitividade(self):
+    def ler_sensibilidade(self):
         """
-        Lê o valor de sensitividade escolhido no Lock-in
+        Lê o valor de sensibilidade escolhido no Lock-in
 
         Returns:
-            str: A escala em que o Lock-in está informando a tensão
+            tuple: A sensibilidade setada no Lock-in. Uma tupla do valor em str e em num (tanto em código quando em float)
         """
 
         dicionario_traducao = {
-            1: '10 nV',
-            2: '20 nV',
-            3: '50 nV',
-            4: '100 nV',
-            5: '200 nV',
-            6: '500 nV',
-            7: '1 µV',
-            8: '2 µV',
-            9: '5 µV',
-            10: '10 µV',
-            11: '20 µV',
-            12: '50 µV',
-            13: '100 µV',
-            14: '200 µV',
-            15: '500 µV',
-            16: '1 mV',
-            17: '2 mV',
-            18: '5 mV',
-            19: '10 mV',
-            20: '20 mV',
-            21: '50 mV',
-            22: '100 mV',
-            23: '200 mV',
-            24: '500 mV',
+            1: ['10 nV', 1, 10e-9, pow(10, -9)],
+            2: ['20 nV', 2, 20e-9, pow(10, -9)],
+            3: ['50 nV', 3, 50e-9, pow(10, -9)],
+            4: ['100 nV', 4, 100e-9, pow(10, -9)],
+            5: ['200 nV', 5, 200e-9, pow(10, -9)],
+            6: ['500 nV', 6, 500e-9, pow(10, -9)],
+            7: ['1 µV', 7, 1e-6, pow(10, -6)],
+            8: ['2 µV', 8, 2e-6, pow(10, -6)],
+            9: ['5 µV', 9, 5e-6, pow(10, -6)],
+            10: ['10 µV', 10, 10e-6, pow(10, -6)],
+            11: ['20 µV', 11, 20e-6, pow(10, -6)],
+            12: ['50 µV', 12, 50e-6, pow(10, -6)],
+            13: ['100 µV', 13, 100e-6, pow(10, -6)],
+            14: ['200 µV', 14, 200e-6, pow(10, -6)],
+            15: ['500 µV', 15, 500e-6, pow(10, -6)],
+            16: ['1 mV', 16, 1e-3, pow(10, -3)],
+            17: ['2 mV', 17, 2e-3, pow(10, -3)],
+            18: ['5 mV', 18, 5e-3, pow(10, -3)],
+            19: ['10 mV', 19, 10e-3, pow(10, -3)],
+            20: ['20 mV', 20, 20e-3, pow(10, -3)],
+            21: ['50 mV', 21, 50e-3, pow(10, -3)],
+            22: ['100 mV', 22, 100e-3, pow(10, -3)],
+            23: ['200 mV', 23, 200e-3, pow(10, -3)],
+            24: ['500 mV', 24, 500e-3, pow(10, -3)],
         }
         self.conexao.write(b'G\r')
         raw = self.conexao.readline().decode('utf-8').strip()
         try:
-            sensitividade_c = int(raw) # Transforma o texto em número
+            sensibilidade_c = int(raw) # Transforma o texto em número
         except ValueError as e:
             print(f'Erro ao converter a resposta "raw" --> float: {e}')
-            sensitividade_c = None
+            sensibilidade_c = None
 
-        return dicionario_traducao[sensitividade_c]
+        return dicionario_traducao[sensibilidade_c]
 
     
     # ========== Escrita ==========
     def set_tempo_espera(self, t):
 
         comando = f'W{t}\r'
+        self.conexao.write(comando.encode('ascii')) # Envia o comando
+
+    def set_sensibilidade(self, valor: int):
+        """
+        Define um valor de sensibilidade no Lock-in. O "valor" é um número inteiro de 1 a 24
+
+        Args:
+            valor (int): Número inteiro de 1 a 24
+        """
+
+        comando = f'G{valor}\r'
         self.conexao.write(comando.encode('ascii')) # Envia o comando
 #endregion
 
@@ -257,33 +268,19 @@ class Experimento:
         self.descricao = descricao
 
         # ========== Novas características que não são definidas pelo usuário
-        self.lista_tensao = []
-        self.lista_comprimento_onda = []
         self.comp_atual = self.comp_i
-        self.abortar_experimento = False
-        self.experimento_concluido = False
+
+        # ========== Eventos ==========
+        self.eventos = []
+        self.evento_abortar_experimento = False
+        self.evento_experimento_concluido = False
+        self.evento_sensibilidade_violada = None
 
         # Para o gráfico
-        # self.tamanho_buffer = 100
         self.buffer_x = []
         self.buffer_y = []
         self.fig, self.ax = None, None
         self.ln = None
-
-        #region Metadados
-        from datetime import date, datetime
-        tempo = datetime.now().time()
-        hoje = date.today() # Obtém a data atual (YYYY-MM-DD)
-        self.metadados = [
-            f'# Experimento: {self.descricao}',
-            f'# Data: [{hoje}] [{tempo}]',
-            f'# Operador: {self.operador}',
-            f'# Comprimento de onda inicial: {self.comp_i}',
-            f'# Comprimento de onda final: {self.comp_f}',
-            f'# Tamanho da fenda {self.tamanho_fenda}',
-            f'# Ponto Por Resolução (PPR): {self.ppr}'
-        ]
-        #endregion
 
     # ========== Conexão ==========
     def conectar(self, conexao_lock_in: dict, conexao_arduino: dict):
@@ -306,11 +303,11 @@ class Experimento:
         """Função executada caso a janela de plotagem seja fechada. Encerra o programa."""
 
         # Não uso o "evnto", mas preciso desse argumeto para o Matplot não reclamar
-        if self.experimento_concluido:
+        if self.evento_experimento_concluido:
             return
         
         print('\n[AVISO] Janela fechada. Abortando experimento com segurança...')
-        self.abortar_experimento = True
+        self.evento_abortar_experimento = True
 
     def tecla_pressionada(self, evento):
         """
@@ -322,7 +319,7 @@ class Experimento:
 
         if evento.key == 'escape' or evento.key == 'q':
             print('\n[AVISO] Tecla de parada pressionada. Encerrando...')
-            self.abortar_experimento = True
+            self.evento_abortar_experimento = True
 
     # ========== Gráfico ==========
     def inicializar_grafico(self):
@@ -339,9 +336,10 @@ class Experimento:
         
         self.ax.set_title(f'Espectro em Tempo Real')
         self.ax.set_xlabel('Comprimento de Onda (Å)')
-        escala = self.sr510.ler_sensitividade()
-        print(f'Gráfico: Sensibilidade [{escala}]')
-        self.ax.set_ylabel(f'Sinal ({escala})')
+        row_sensibilidade = self.sr510.ler_sensibilidade()
+        self.sensibilidade_str, self.sensibilidade_num = row_sensibilidade[0], row_sensibilidade[1:]
+        print(f'Gráfico: Sensibilidade [{self.sensibilidade_str}]')
+        self.ax.set_ylabel(f'Sinal ({self.sensibilidade_str})')
         self.ax.grid(True)
         self.ax.legend(loc='upper left')
 
@@ -362,6 +360,23 @@ class Experimento:
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
 
+    # ========== Utilitários ==========
+    def verifica_sensibilidade(self):
+        """Verifica se ocorreu overload. Se sim, diminue a sensibilidade"""
+
+        if self.tensao_original > self.sensibilidade_num[1]:
+            # Alterar a sensibilidade (diminuir)
+            nova_sensibilidade = self.sensibilidade_num[0] + 1
+            self.sr510.set_sensibilidade(nova_sensibilidade)
+
+            row_sensibilidade = self.sr510.ler_sensibilidade()
+            nova_sensibilidade_str, self.sensibilidade_num = row_sensibilidade[0], row_sensibilidade[1:]
+            
+            self.ax.set_ylabel(f'Sinal ({nova_sensibilidade_str})')
+            self.evento_sensibilidade_violada = [f'# [{datetime.now().time()}]: A sensibilidade foi reduzida de {self.sensibilidade_str} para {nova_sensibilidade_str}'] # Para os Eventos
+            self.eventos.append(self.evento_sensibilidade_violada)
+            self.sensibilidade_str = nova_sensibilidade_str
+            
 
     def calcula_passo(self):
         """
@@ -427,9 +442,11 @@ class Experimento:
         """Coleta os dados do experimento e armazena na forma de listas do próprio objeto"""
         
         # Podemos adicionar um "tratamento" de dados ou uma coleta com média e desvio padrão
-        tensao = self.sr510.ler_valor_saida()
+        self.tensao_original = self.sr510.ler_valor_saida()
+        # OBS: A divisão deve ser apenas pela ordem de grandeza original para amnter o gráfico. 
+        tensao = round((self.tensao_original / self.sensibilidade_num[2]), 3)
         # self.lista_tensao.append(tensao) --> _antiga_criar_arquivo_csv()
-        comprimento_onda = self.comp_atual # Como vamos conseguir esse valor?????
+        comprimento_onda = round(self.comp_atual, 3) # Como vamos conseguir esse valor?????
 
         
         # self.lista_comprimento_onda.append(comprimento_onda) --> _antiga_criar_arquivo_csv()
@@ -472,6 +489,22 @@ class Experimento:
                 contador += 1
 
             return arquivo
+        
+        #region Metadados
+        tempo = datetime.now().time()
+        hoje = date.today() # Obtém a data atual (YYYY-MM-DD)
+        self.metadados = [
+            f'# Experimento: {self.descricao}',
+            f'# Data: [{hoje}] [{tempo}]',
+            f'# Operador: {self.operador}',
+            f'# Comprimento de onda inicial: {self.comp_i}',
+            f'# Comprimento de onda final: {self.comp_f}',
+            f'# Tamanho da fenda {self.tamanho_fenda}',
+            f'# Ponto Por Resolução (PPR): {self.ppr}',
+            f'# Sensibilidade: {self.sensibilidade_str}'
+        ]
+        #endregion
+
 
         self.nome_exclusivo = nome_excludente(self.nome_arquivo)
         with open(self.nome_exclusivo, 'a', newline='', encoding='utf-8') as log:
@@ -499,8 +532,8 @@ class Experimento:
         total_pontos, step, passo_a = self.calcula_passo()
         self.conectar(conexao_lock_in=conexao_lock_in, conexao_arduino=conexao_arduino)
         print('Criando o arquivo .csv...')
-        self.cria_arquivo_csv()
         self.inicializar_grafico()
+        self.cria_arquivo_csv()
 
         print('Iniciando o experimento...\n')
         sleep(2.5)
@@ -508,13 +541,14 @@ class Experimento:
             tempo_i = perf_counter()
 
             # Verifica se ocorreu o pedido de parada
-            if self.abortar_experimento:
+            if self.evento_abortar_experimento:
                 break
 
             # Medir --> mover --> Medir...
             self.coletar_dados()
             self.atualizar_grafico()
             plt.pause(0.01) # Permitir a interatividade durante a execução
+            self.verifica_sensibilidade()
 
             self.move_motor(step, passo_a)
             tempo_f = perf_counter()
@@ -530,16 +564,26 @@ class Experimento:
         print('Finalizando conexões...')
         self.desconectar()
 
-        if self.abortar_experimento:
-            print("Experimento interrompido pelo usuário.")
+        if self.evento_abortar_experimento:
+            print('Experimento interrompido pelo usuário.')
+            self.eventos.append(f'# [{datetime.now().time()}]: O experimento foi interrompido pelo usuário')
+
         else:
             print("Experimento concluído.")
-            self.experimento_concluido = True
+            self.evento_experimento_concluido = True
             # Deixa o gráfico na tela ao final do experimento
             plt.ioff()
             plt.tight_layout()
-            plt.savefig(self.nome_exclusivo.stem + 'jpg')
+            plt.savefig(self.nome_exclusivo.stem + '.jpg')
             plt.show()
+
+        # ===== Rotina para escrever os eventos
+        with open(self.nome_exclusivo, 'a', newline='', encoding='utf-8') as log:
+
+            log.write('#' + '-'*25 + '\n') # Uma linha divisória para ficar bonito
+
+            for linha in self.eventos: # Escreve os eventos
+                log.write(linha + '\n')
 #endregion
 
 
