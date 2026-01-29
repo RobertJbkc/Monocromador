@@ -1,5 +1,6 @@
 #region Observações
 # - A função de coleta de dados tem que ser chamda junto com a de criar um .csv.
+# - É necessário dar um nome ao arquivo. Caso contrário a função de nomes diferentes não funcionará corretamente.
 #endregion
 
 
@@ -283,7 +284,6 @@ class Experimento:
         # ===== Eventos
         self.eventos = []
         self.evento_abortar_experimento = False
-        self.evento_sensibilidade_violada = False
 
         # ===== Para o gráfico
         self.buffer_x = []
@@ -325,7 +325,7 @@ class Experimento:
         if self.evento_experimento_concluido:
             return
         
-        print('\n[AVISO] Janela fechada. Abortando experimento com segurança...')
+        print('\n[AVISO] Janela fechada. Abortando experimento...')
         self.evento_abortar_experimento = True
 
     def tecla_pressionada(self, evento):
@@ -372,6 +372,7 @@ class Experimento:
             self.ax.set_ylim(min(self.buffer_y) - margem, max(self.buffer_y) + margem) # Limites em y (escala)
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
+
 
     # ========== Funcionalidades ==========
     def calcula_passo(self):
@@ -478,9 +479,10 @@ class Experimento:
             for linha in self.metadados: # Escreve os metadados
                 log.write(linha + '\n')
             
-            log.write('#' + '-'*25 + '\n') # Uma linha divisória para ficar bonito
+            log.write('#' + '-'*25 + '\n') # Uma linha divisória para ficar bonito e legível
 
     def escreve_eventos(self):
+        """Escreve, ao final, os eventos que ocorreram durande a execução"""
         with open(self.nome_arquivo_csv, 'a', newline='', encoding='utf-8') as log:
 
             log.write('#' + '-'*25 + '\n') # Uma linha divisória para ficar bonito
@@ -517,7 +519,7 @@ class Experimento:
     def move_motor(self, step, passo_a):
         """Movimenta o motor do monocromador com base em passos de motor (steps)"""
 
-        print(f'Movendo o motor... {step} passos de motor; {passo_a}Angstron')
+        print(f'Movendo o motor... {step} passos de motor; {passo_a}Å')
         self.comp_atual += passo_a # Atualiza onde o programa está no espectro
         self.arduino.mover_motor(step)
 
@@ -585,7 +587,7 @@ class Experimento:
 if __name__ == "__main__":
 
     # ========== Sessão destinada à alteração ==========
-    NOME = ''
+    NOME = 'NOME'
     OPERADOR = ''
     COPRIMENTO_DE_ONDA_INICIAL = 1000
     COMPRIMENTO_DE_ONDA_FINAL = 1100
