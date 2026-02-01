@@ -43,7 +43,8 @@ class ExperimentoGUI(pyce.Experimento):
         self.ax_gui = ax
         self.canvas_gui = canvas
         
-        self.linha_grafico, = self.ax_gui.plot([], [], 'b.-', ms=3, label='Sinal (V)')
+        # self.linha_grafico, = self.ax_gui.plot([], [], 'b.-', ms=3, label='Sinal (V)')
+        self.linha_grafico, = self.ax_gui.plot([], [], 'ro-', ms=2.5, label='Sinal (V)')
         self.ax_gui.legend(loc='upper right')
 
         self.modo_simulacao = modo_simulacao
@@ -89,7 +90,7 @@ class ExperimentoGUI(pyce.Experimento):
             # .draw_idle() é melhor que .draw() pois espera o processador "respirar". Desenhe quiando der. Kkkkkk
 
 class TextRedirector:
-    def __init__(self, widget, tag="stdout"):
+    def __init__(self, widget, tag='stdout'):
         self.widget = widget
         self.tag = tag
         self.queue = queue.Queue()
@@ -105,14 +106,14 @@ class Interface:
     def __init__(self, raiz):
         self.raiz = raiz
         self.raiz.title('Central de comando')
-        self.raiz.geometry('900x1000') # Largura x Altura inicial
+        self.raiz.geometry('900x700') # Largura x Altura inicial
 
         # ========== Variáveis que serão definidas pelo usuário ==========
-        self.var_nome = tk.StringVar(value='1Nome')
+        self.var_nome = tk.StringVar()
         self.var_operador = tk.StringVar()
         self.var_texto = tk.StringVar()
         self.var_inicio = tk.DoubleVar()
-        self.var_fim = tk.DoubleVar(value=30)
+        self.var_fim = tk.DoubleVar()
         self.var_fenda = tk.DoubleVar(value=100)
         self.var_ppr = tk.IntVar(value=5) # Valor padrão
         self.var_porta_lockin = tk.StringVar(value='COM10')
@@ -237,10 +238,6 @@ class Interface:
     
     def completa_janela(self):
         
-        # ===== Estilo
-        style = ttk.Style()
-        style.theme_use('vista')
-
         # Frame Principal que será dividido em esquerda (Controles) e direita (Gráfico)
         main_frame = ttk.Frame(self.raiz)
         main_frame.pack(fill='both', expand=True, padx=10, pady=10)
@@ -282,7 +279,7 @@ class Interface:
         self.botao_iniciar = ttk.Button(painel_esquerdo, text='Iniciar experimento', command=self.inicia_thread) # --> Chama o método preparar thread
         self.botao_iniciar.grid(row=len(campos), columnspan=2, pady=(20, 5), sticky='ew')
 
-        self.botao_parar = ttk.Button(painel_esquerdo, text='Parar experimanto', command=self.parar_experimento, state='disabled')
+        self.botao_parar = ttk.Button(painel_esquerdo, text='Parar experimento', command=self.parar_experimento, state='disabled')
         self.botao_parar.grid(row=len(campos) + 1, columnspan=2, pady=(5, 10), sticky='ew')
 
         # ===== Checkbox de simulação
@@ -296,7 +293,7 @@ class Interface:
         # ===== Texto rolável
         frame_log = ttk.Frame(painel_esquerdo)
         frame_log.grid(row=len(campos) + 4, column=0, columnspan=2, pady=10, sticky='ew')
-        self.txt_log = scrolledtext.ScrolledText(frame_log, width=30, height=25, state='disabled') # Largura em caracteres
+        self.txt_log = scrolledtext.ScrolledText(frame_log, width=30, height=12, state='disabled') # Largura em caracteres
         self.txt_log.pack(fill='both', expand=True)
 
 

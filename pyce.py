@@ -20,17 +20,17 @@ class Monocromador:
     São métodos de leitura e escrita, além de conexão e desconexão da comunicação Serial focados nas funcionalidades do monocromador (Arduino).
     """
 
-    def __init__(self, porta: str, boundrate: int, timeout: None=None):
+    def __init__(self, porta: str, baudrate: int, timeout: None=None):
         """
         Função constutora para a classe de comunicação Python-Arduino
 
         Args:
             porta (str): A porta 'COM' em que a placa Arduino está conectada
-            boundrate (int): A taxa de comunicação Serial
+            baudrate (int): A taxa de comunicação Serial
             timeout (None): O tempo máximo que o python espera por uma resposta. None --> Infinito. Defaults to None.
         """
         self.porta = porta
-        self.boundrate = boundrate
+        self.baudrate = baudrate
         self.timeout = timeout
 
     # ========== Conexão ==========
@@ -39,7 +39,7 @@ class Monocromador:
 
         self.conexao = serial.Serial(
             port=self.porta,
-            baudrate=self.boundrate,
+            baudrate=self.baudrate,
             timeout=self.timeout
          )
         sleep(0.5)
@@ -109,17 +109,17 @@ class SR510:
     A base de funcionamento é o módulo pySerial.
     """
 
-    def __init__(self, porta: str, boundrate: int):
+    def __init__(self, porta: str, baudrate: int):
         """
         Função construtora da classe SR510.
 
         Args:
             porta (str): A porta Serial em que o Lock-in está conectado.
-            boundrate (int): A taxa de comunicação Serial entre o computador e o Lock-in.
+            baudrate (int): A taxa de comunicação Serial entre o computador e o Lock-in.
         """
 
         self.porta = porta
-        self.boundrate = boundrate
+        self.baudrate = baudrate
         self.conexao = None
 
 
@@ -129,7 +129,7 @@ class SR510:
          
         self.conexao = serial.Serial(
             port=self.porta,
-            baudrate=self.boundrate, # Configurado nas chaves 1, 2 e 3
+            baudrate=self.baudrate, # Configurado nas chaves 1, 2 e 3
             bytesize=serial.EIGHTBITS,
             parity=serial.PARITY_NONE, # Configurado nas chaves 4 e 5
             stopbits=serial.STOPBITS_TWO, # O SR510 exige 2 em 9600 baud
@@ -296,8 +296,8 @@ class Experimento:
         Cria a conexao (abre o canal), por meio de "SR510", com o Lock-in e por meio de "Monocromador" com o Arduino.
 
         Args:
-            conexao_lock_in (dict): O dicionário a porta (porta) o boundrate (boundrate) e o timeout (timeot) para a conexão.
-            conexao_arduino (dict): O dicionário a porta (porta) o boundrate (boundrate) e o timeout (timeot) para a conexão.
+            conexao_lock_in (dict): O dicionário a porta (porta) o baudrate (baudrate) e o timeout (timeot) para a conexão.
+            conexao_arduino (dict): O dicionário a porta (porta) o baudrate (baudrate) e o timeout (timeot) para a conexão.
         """
 
         self.sr510 = SR510(**conexao_lock_in) # Cria o objeto da classe "SR510"
@@ -414,6 +414,7 @@ class Experimento:
                 tuple: Uma tupla --> (total de pontos de medida, passo do motor "step" emunidades de passo de motor)
             """
 
+            total_pontos_original = ceil(total_pontos_original) # Gaante que é inteiro
             step_basico = conversor_angstron_step_step_angstron(passo_a, 'ang')
             fracionaria, step = modf(step_basico) # Tupla --> (parte fracionária, parte inteira(float))
             falta = fracionaria * total_pontos_original # Em unidades de passo de motor
@@ -424,7 +425,7 @@ class Experimento:
         
         diferenca = abs(self.comp_f - self.comp_i)
         resolucao = self.tamanho_fenda * Experimento.grade
-        total_pontos = self.ppr * diferenca / resolucao # Total de ciclos
+        total_pontos = self.ppr * (diferenca / resolucao) # Total de ciclos
         passo_a = diferenca / total_pontos # Unidades de comprimento Å
         novo_total_pontos, step = acerta_passo(total_pontos, passo_a)
         novo_passo_a = conversor_angstron_step_step_angstron(step, 'step')
@@ -521,6 +522,7 @@ class Experimento:
         """Movimenta o motor do monocromador com base em passos de motor (steps)"""
 
         print(f'Movendo o motor... {step} passos de motor; {passo_a}Å')
+        print(f'Comprimento atual: {round(self.comp_atual, 3)}Å')
         self.comp_atual += passo_a # Atualiza onde o programa está no espectro
         self.arduino.mover_motor(step)
 
@@ -529,7 +531,7 @@ class Experimento:
         Uma função para rodar um experimento inteiro, i.e., coletar dados, mover motores e salvar o arquivo .csv
 
         Args:
-            conexao (dict): Um dicionário com as chaves porta (porta) e o bound rate (boundrate) da comunicação Serial
+            conexao (dict): Um dicionário com as chaves porta (porta) e o bound rate (baudrate) da comunicação Serial
         """
 
         total_pontos, step, passo_a = self.calcula_passo()
@@ -614,11 +616,11 @@ if __name__ == "__main__":
     experimento.conectar(
         conexao_lock_in={
             'porta': PORTA_LOCK_IN,
-            'boundrate': 9600
+            'baudrate': 9600
         },
         conexao_arduino={
             'porta': PORTA_ARDUINO,
-            'boundrate': 9600,
+            'baudrate': 9600,
             'timeout': None
         }
     )
