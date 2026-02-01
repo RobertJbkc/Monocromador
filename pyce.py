@@ -272,7 +272,7 @@ class Experimento:
         self.operador = operador
         self.comp_i = comp_i
         self.comp_f = comp_f
-        self.tamanho_fenda = tamanho_fenda
+        self.tamanho_fenda = tamanho_fenda / 1000 # --> Micro metro para mm
         self.ppr = ppr
         self.descricao = descricao
 
@@ -434,7 +434,7 @@ class Experimento:
     def cria_arquivo_csv(self):
         """Cria o arquivo .csv para receber os dados coletados no exeperiemento"""
 
-        def nome_excludente(nome_base: str, pasta='.'):
+        def nome_excludente(nome_base: str, pasta='Gráficos'):
             """
             Cria o nome do arquivo .csv em que serão armazenados os dados do experiemnto. Garante que o nome é único.
 
@@ -449,15 +449,16 @@ class Experimento:
             from pathlib import Path
 
             pasta = Path(pasta)
+            pasta.mkdir(exist_ok=True)
             nome_base = Path(nome_base).stem
-            arquivo = pasta / f'{nome_base}'
+            arquivo = pasta / f'{nome_base}.csv'
 
             contador = 1
             while arquivo.exists():
-                arquivo = pasta / f"{nome_base}_{contador}"
+                arquivo = pasta / f'{nome_base}_{contador}.csv'
                 contador += 1
 
-            return arquivo
+            return pasta / arquivo.stem
         
         #region Metadados
         self.metadados = [
@@ -471,9 +472,9 @@ class Experimento:
             f'# Sensibilidade: {self.sensibilidade_str}'
         ]
         #endregion
-
         self.nome_exclusivo = nome_excludente(self.nome_arquivo)
         self.nome_arquivo_csv = f'{self.nome_exclusivo}.csv'
+        print('Ponto 2', self.nome_exclusivo, self.nome_arquivo_csv)
         with open(self.nome_arquivo_csv, 'a', newline='', encoding='utf-8') as log:
 
             for linha in self.metadados: # Escreve os metadados
@@ -589,10 +590,10 @@ if __name__ == "__main__":
     # ========== Sessão destinada à alteração ==========
     NOME = 'NOME'
     OPERADOR = ''
-    COPRIMENTO_DE_ONDA_INICIAL = 1000
-    COMPRIMENTO_DE_ONDA_FINAL = 1100
-    ABERTURA_DA_FENDA = 0.1
-    PONTOS_POR_RESOLUCAO = 1
+    COPRIMENTO_DE_ONDA_INICIAL = 1000 # Å
+    COMPRIMENTO_DE_ONDA_FINAL = 1100 # Å
+    ABERTURA_DA_FENDA = 100 # micro metro
+    PONTOS_POR_RESOLUCAO = 3
     TEXTO = """Conjunto de testes para verificar o correto funcionamento do programa de leitura e automação do monocromador com Python 3"""
 
     PORTA_LOCK_IN = 'COM10'
