@@ -207,6 +207,7 @@ class Interface:
             
             
             self.fig.tight_layout()
+            self.fig.set_size_inches(8, 5)
             self.fig.savefig(f'{self.nome_excluivo}.jpg', dpi=300)
 
     def parar_experimento(self):
