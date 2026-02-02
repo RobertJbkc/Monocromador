@@ -43,9 +43,9 @@ class Monocromador:
             timeout=self.timeout
          )
         sleep(0.5)
-        print(f'Conectando na porta {self.porta}...')
+        print(f'Arduino: Conectando na porta {self.porta}...')
         sleep(2.5) # Tempo para garanti que a conxão foi aberta
-        print(f'Arduino conectado na porta {self.porta}. Canal Serial aberto.')
+        print(f'-- Arduino conectado na porta {self.porta}. Canal Serial aberto --')
 
     def desconectar(self):
         """Fecha a comunicação entre o Arduino e o computador (Python)."""
@@ -95,7 +95,7 @@ class Monocromador:
 
         self.escrever(steps)
         saida = self.ler_Serial()
-        print(f'Arduino: [{saida}]')
+        print(f'Arduino: Resposta [{saida}];')
 
 
 
@@ -136,9 +136,9 @@ class SR510:
             timeout=0.05
          )
         sleep(0.5)
-        print(f'Conectando na porta {self.porta}...')
+        print(f'Lock-in: Conectando na porta {self.porta}...')
         sleep(2.5) # Tempo para garanti que a conxão foi aberta
-        print(f'SR510 conectado na porta {self.porta}. Canal Serial aberto.')
+        print(f'-- SR510 conectado na porta {self.porta}. Canal Serial aberto --')
 
     def fechar(self):
         """Fecha a conexão antre computador e Lock-in"""
@@ -325,7 +325,7 @@ class Experimento:
         if self.evento_experimento_concluido:
             return
         
-        print('\n[AVISO] Janela fechada. Abortando experimento...')
+        print('\nAVISO: Janela fechada. Abortando experimento...')
         self.evento_abortar_experimento = True
 
     def tecla_pressionada(self, evento):
@@ -337,7 +337,7 @@ class Experimento:
         """
 
         if evento.key == 'escape' or evento.key == 'q':
-            print('\n[AVISO] Tecla de parada pressionada. Encerrando...')
+            print('\nAVISO: Tecla de parada pressionada. Encerrando...')
             self.evento_abortar_experimento = True
 
     # ========== Gráfico ==========
@@ -475,7 +475,6 @@ class Experimento:
         #endregion
         self.nome_exclusivo = nome_excludente(self.nome_arquivo)
         self.nome_arquivo_csv = f'{self.nome_exclusivo}.csv'
-        print('Ponto 2', self.nome_exclusivo, self.nome_arquivo_csv)
         with open(self.nome_arquivo_csv, 'a', newline='', encoding='utf-8') as log:
 
             for linha in self.metadados: # Escreve os metadados
@@ -521,8 +520,8 @@ class Experimento:
     def move_motor(self, step, passo_a):
         """Movimenta o motor do monocromador com base em passos de motor (steps)"""
 
-        print(f'Movendo o motor... {step} passos de motor; {passo_a}Å')
-        print(f'Comprimento atual: {round(self.comp_atual, 3)}Å')
+        print(f'Motor: {step} steps -- {passo_a}Å...')
+        print(f'Posição atual: {round(self.comp_atual, 3)}Å')
         self.comp_atual += passo_a # Atualiza onde o programa está no espectro
         self.arduino.mover_motor(step)
 
@@ -535,11 +534,11 @@ class Experimento:
         """
 
         total_pontos, step, passo_a = self.calcula_passo()
-        print('Criando o arquivo .csv...')
+        print('PC: Criando o arquivo .csv...')
         self.inicializar_grafico()
         self.cria_arquivo_csv()
         sleep(1.5)
-        print('Iniciando o experimento...\n')
+        print('PC: Iniciando o experimento...\n', '#'*25)
         sleep(2.5)
 
         for i in range(total_pontos):
@@ -563,10 +562,11 @@ class Experimento:
             delta_t = tempo_f - tempo_i
             tempo_total = round(delta_t * (total_pontos - i + 1), 1) # i: 0 --> total_pontos - 1
             minutos, segundos = tempo_total // 60, tempo_total % 60
-            print(f"Tempo restante: {minutos}' {segundos}'' --- {i+1}/{total_pontos}\n", '-'*25)
+            print(f"Tempo restante: {minutos}' {segundos}''")
+            print(f'Ciclo {i+1}/{total_pontos}\n', '-'*25, '\n')
         
 
-        print('Finalizando conexões...')
+        print('PC: Finalizando conexões...')
         self.desconectar()
 
         if self.evento_abortar_experimento:
@@ -574,7 +574,7 @@ class Experimento:
             
 
         else:
-            print('Experimento concluído.')
+            print('PC: Experimento concluído.')
             self.eventos.append(f'Conclusão: [{self.tempo_atual}]')
             self.escreve_eventos()
 

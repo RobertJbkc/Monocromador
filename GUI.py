@@ -160,7 +160,7 @@ class Interface:
         t.start()
 
     def rodar_pyce(self):
-        print('THREAD: Iniciando experimento...')
+        print('Thread: Iniciando experimento...')
         
         pyce.plt.show = lambda: None  # Anula o "show()", pois trava a thread; "Monkey Patching"; Redefine o plt.show!!!!!
         pyce.plt.pause = lambda x: time.sleep(x) # Troca pause por sleep (mais leve)
@@ -186,11 +186,11 @@ class Interface:
             conexao_lockin = {'porta': self.var_porta_lockin.get(), 'baudrate': 9600}
             conexao_arduino = {'porta': self.var_porta_arduino.get(), 'baudrate': 9600}
 
-            print('THREAD: Conectando equipamentos...')
+            print('Thread: Conectando equipamentos...')
             self.experimento_atual.conectar(conexao_lockin, conexao_arduino)
             self.raiz.after(0, lambda: self.log_status.config(text='Status: Rodando...', foreground='green'))
             
-            print('THREAD: Executando run()...')
+            print('Thread: Executando run()...')
             self.experimento_atual.run() # Roda o loop principal do pyce.py
             self.nome_excluivo = self.experimento_atual.nome_exclusivo
             self.raiz.after(0, lambda: self.log_status.config(text='Status: Concluído.', foreground='blue'))
